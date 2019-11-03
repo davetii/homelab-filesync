@@ -1,10 +1,16 @@
 package com.greatwideweb.homelab.filesync.homelabfilesync;
 
+import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +37,9 @@ public class FileSyncReport {
 
     @Value("${app.master.location}")
     private String masterDir;
+
+    @Value("${app.reportfile.location}")
+    private String reportFileName;
 
     public void setMovedFiles(List<FileSyncEnvItem> stagingFiles) {
         if(stagingFiles.isEmpty()) { return; }
@@ -63,9 +72,25 @@ public class FileSyncReport {
             list.addAll(dupFiles);
         }
         list.add(SEP);
+
+        File reportFile = new File(reportFileName);
+        if (!reportFile.exists()) {
+            try {
+                FileUtils.touch(reportFile);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         list.forEach( e -> {
-            System.out.println(e);
+            try {
+                FileUtils.writeStringToFile(reportFile, e + "\r\n", StandardCharsets.UTF_8, true);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         });
+
+
     }
 
     public void setReportTime(LocalDateTime reportDate) {
