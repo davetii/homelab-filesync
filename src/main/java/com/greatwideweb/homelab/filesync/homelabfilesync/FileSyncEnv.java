@@ -5,7 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FileSyncEnv {
     private final List<FileSyncEnvDirItem> children = new ArrayList<>();
@@ -21,10 +23,7 @@ public class FileSyncEnv {
                 e.printStackTrace();
             }
         });
-
         children.forEach(e -> childNames.add(e.getName()));
-
-
     }
 
     public List<String> getChildNames() {
@@ -43,5 +42,26 @@ public class FileSyncEnv {
         }
         return false;
     }
+
+    public List<String> findDupsWithinEnvironment() {
+        List<String> result = new ArrayList<>();
+        List<FileSyncEnvItem> allItems = new ArrayList<>();
+        children.forEach((e) -> { allItems.addAll(e.getContent()); });
+        Set<String> names = new HashSet<>();
+        Set<String> dups = new HashSet<>();
+        allItems.forEach((e) -> {
+            if(!names.add(e.getName())) { dups.add(e.getName()); }
+        });
+
+        dups.forEach((e) -> {
+            allItems.forEach((ai) -> {
+                if(e.equals(ai.getName())) {
+                    result.add(ai.getPathedName());
+                }
+            });
+        });
+        return result;
+    }
+
 
 }

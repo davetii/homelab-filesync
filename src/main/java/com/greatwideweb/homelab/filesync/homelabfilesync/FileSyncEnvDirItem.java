@@ -42,6 +42,7 @@ public class FileSyncEnvDirItem extends FileSyncEnvItem{
     }
 
     public boolean containsFile(String name) {
+
         for (FileSyncEnvItem e : content) {
             if (e.getName().equals(name)) { return true; }
         }

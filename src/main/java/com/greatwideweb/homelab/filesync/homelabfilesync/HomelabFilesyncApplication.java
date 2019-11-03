@@ -9,17 +9,24 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import javax.annotation.PostConstruct;
-import java.util.Date;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @SpringBootApplication
 public class HomelabFilesyncApplication implements CommandLineRunner {
 
-	private Date d1;
+	private Instant startTime;
+	private LocalDateTime reportDate;
 
 	@Autowired
 	FileSyncUtils utils;
+
+	@Autowired
+	FileSyncReport report;
+
 	@Value("${app.master.location}")
 	private String masterDir;
 
@@ -34,6 +41,7 @@ public class HomelabFilesyncApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
+
 		FileSyncEnv master = new FileSyncEnv(masterDir);
 		FileSyncEnv staging = new FileSyncEnv(stageDir);
 
@@ -54,15 +62,17 @@ public class HomelabFilesyncApplication implements CommandLineRunner {
 		utils.maybeDeleteDupfilesFromStaging(dupFiles);
 		stagingFiles = stagingFiles.stream().filter(e -> !dupFiles.contains(e)).collect(Collectors.toList());
 		utils.moveFilesToMaster(stagingFiles);
-		logger.info("end seconds: " + (new Date().getTime()-d1.getTime())/1000);
-
-
-
+		report.setMovedFiles(stagingFiles);
+		report.setDupsFilesFound(master.findDupsWithinEnvironment());
+		report.setStartTime(startTime);
+		report.setReportTime(reportDate);
+		report.createReport();
+		logger.info("end seconds: " + (Duration.between(startTime, Instant.now()).toMillis() / 1000));
 	}
 
 	@PostConstruct
 	private void onStart() {
-		d1 = new Date();
-
+		startTime =  Instant.now();
+		reportDate = LocalDateTime.now();
 	}
 }

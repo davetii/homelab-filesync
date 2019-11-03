@@ -30,8 +30,6 @@ public class FileSyncUtils {
     public FileSyncUtils() { }
 
     public void maybeAddStagingDirs(List<String> list) {
-        System.out.println("maybeAddStagingDirs");
-        System.out.println(list);
         if(list.isEmpty()) { return; }
         list.parallelStream().forEach((f) -> {
             try {
