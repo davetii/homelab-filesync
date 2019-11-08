@@ -1,5 +1,7 @@
 package com.greatwideweb.homelab.filesync.homelabfilesync;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.greatwideweb.homelab.common.FileSyncReport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import javax.annotation.PostConstruct;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,20 +27,23 @@ public class HomelabFilesyncApplication implements CommandLineRunner {
 	@Autowired
 	FileSyncUtils utils;
 
-	@Autowired
-	FileSyncReport report;
+	FileSyncReport report = new FileSyncReport();
 
 	@Value("${app.master.location}")
 	private String masterDir;
 
 	@Value("${app.staging.location}")
 	private String stageDir;
+
+	@Autowired
+	FileSyncKafkaProducer kafkaProducer;
+
+	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 	private static final Logger logger = LoggerFactory.getLogger(HomelabFilesyncApplication.class);
 
 	public static void main(String[] args) {
 		SpringApplication.run(HomelabFilesyncApplication.class, args);
 	}
-
 
 	@Override
 	public void run(String... args) throws Exception {
@@ -62,11 +68,14 @@ public class HomelabFilesyncApplication implements CommandLineRunner {
 		utils.maybeDeleteDupfilesFromStaging(dupFiles);
 		stagingFiles = stagingFiles.stream().filter(e -> !dupFiles.contains(e)).collect(Collectors.toList());
 		utils.moveFilesToMaster(stagingFiles);
-		report.setMovedFiles(stagingFiles);
-		report.setDupsFilesFound(master.findDupsWithinEnvironment());
-		report.setStartTime(startTime);
-		report.setReportTime(reportDate);
-		report.createReport();
+		report.setFilesMoved(stagingFiles.stream().map(e -> e.getPathedName()).collect(Collectors.toList()));
+		report.setDupFiles(master.findDupsWithinEnvironment());
+		report.setRunDateTime(reportDate.format(formatter));
+		ObjectMapper objectMapper = new ObjectMapper();
+		String json = objectMapper.writeValueAsString(report);
+		logger.info("print object values");
+		logger.info(json);
+		kafkaProducer.sendMessage(json);
 		logger.info("end seconds: " + (Duration.between(startTime, Instant.now()).toMillis() / 1000));
 	}
 
